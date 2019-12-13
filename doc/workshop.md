@@ -26,6 +26,7 @@
 - Small, portable.
 - Powered by USB bus. Can run on a laptop using battery power.
 - USB audio device. Can acquire data with any audio recorder, e.g. Praat, Audacity, `sox` (in the form of `rec`).
+  - It is critical to use the correct recording parameters! For this project, this means two channels, 16 bits per sample, and 48000 Hz sample rate.
 - When transducers are turned on, the pressure signals are interleaved with the audio/lx signals.
 - Signals must be de-interleaved after acquisition.
 - P1 channel has +/- ports. P2 channel has one port.
