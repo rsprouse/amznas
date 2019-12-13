@@ -44,11 +44,17 @@
 
 ## Specific steps
 
-1. Acquisition directory: Use File Explorer or `mkdir {YYYYMMDD}_{subject}`
+### Acquisition
+
+1. Make acquisition directory: Use File Explorer or `mkdir {YYYYMMDD}_{subject}`
 1. Configure: `eggrec --aero --mic-gain 24`
 1. Record: `rec -c 2 -b 16 -r 48000 {YYYYMMDD}_{subject}_{prompt}.{token}.wav`
 1. View: `python C:\bin\eggdisp.py {YYYYMMDD}_{subject}_{prompt}.{token}.wav`
 1. (Delete): Use File Explorer or `del {YYYYMMDD}_{subject}_{prompt}.{token}.wav`
+
+### Postprocessing
+
+When acquisition session is complete, sparate airflow channels from audio/lx: `python C:\bin\eggsep.py --seek .`
 
 ## Making a test recording
 
@@ -86,3 +92,7 @@
 - Symptom: The airflow channels are identical to the audio.
   - Cause: The recording is from the built-in audio device instead of the EGG-D800. Make sure the USB connection between the EGG-D800 and computer is secure at both ends.
   - Cause: EGG-D800 not configured. Re-run the `eggrec` command with the `--aero` parameter.
+
+## Cleaning?
+
+In human subjects protocol?
