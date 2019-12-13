@@ -26,7 +26,7 @@
 - Small, portable.
 - Powered by USB bus. Can run on a laptop using battery power.
 - USB audio device. Can acquire data with any audio recorder, e.g. Praat, Audacity, `sox` (in the form of `rec`).
-  - It is critical to use the correct recording parameters! For this project, this means two channels, 16 bits per sample, and 48000 Hz sample rate.
+  - It is critical to use the correct recording parameters! For this project, this means 2 channels, 16 bits per sample, and 48000 Hz sample rate.
 - When transducers are turned on, the pressure signals are interleaved with the audio/lx signals.
 - Signals must be de-interleaved after acquisition.
 - P1 channel has +/- ports. P2 channel has one port.
@@ -34,7 +34,7 @@
 
 ## Overall workflow
 
-1. Prepare an acquisition directory.
+1. Prepare a directory for the acquisition session.
 1. Attach the EGG-D800 to the computer.
 1. Configure the EGG-D800. Turn on the pressure transducers and set the microphone volume.
 1. Record an acquisition. (Start with a test acq, then a zero calibration acq.)
@@ -46,24 +46,24 @@
 
 1. Acquisition directory: Use File Explorer or `mkdir {YYYYMMDD}_{subject}`
 1. Configure: `eggrec --aero --mic-gain 24`
-1. Record: `rec -c 2 -b 16 -r 48000 {YYYYMMDD}_{subject}_{stim}.{token}.wav`
-1. View: `python C:\bin\eggdisp.py {YYYYMMDD}_{subject}_{stim}.{token}.wav`
-1. (Delete): Use File Explorer or `del {YYYYMMDD}_{subject}_{stim}.{token}.wav`
+1. Record: `rec -c 2 -b 16 -r 48000 {YYYYMMDD}_{subject}_{prompt}.{token}.wav`
+1. View: `python C:\bin\eggdisp.py {YYYYMMDD}_{subject}_{prompt}.{token}.wav`
+1. (Delete): Use File Explorer or `del {YYYYMMDD}_{subject}_{prompt}.{token}.wav`
 
 ## Making a test recording
 
 - Make a short recording with the consultant and view the result.
-- 
 - Check for:
-  - Quality of audio signal
-  - Quality of oral airflow signal
-  - Quality of nasal airflow signal
-  - Make sure oral and nasal airflow are in the correct channels
-  - Make sure oral and nasal airflow signals are not inverted
+  - Quality of audio signal.
+  - Quality of oral airflow signal.
+  - Quality of nasal airflow signal.
+  - Make sure oral and nasal airflow are in the correct channels.
+  - Make sure oral and nasal airflow signals are not inverted.
 
 ## Troubleshooting
 
 - Inspect the mask prior to use and occasionally during use to ensure the screens have not come out or loose.
+- Communicate with subject throughout to ensure the speaker remains comfortable.
 - Symptom: No audio or very low amplitude.
   - Cause: The mic is not plugged in to the EGG-D800.
   - Cause: Improper mic placement.
