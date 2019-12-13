@@ -66,7 +66,7 @@ When acquisition session is complete, sparate airflow channels from audio/lx: `p
   - Make sure oral and nasal airflow are in the correct channels.
   - Make sure oral and nasal airflow signals are not inverted.
 
-## Troubleshooting
+## Monitoring and troubleshooting
 
 - Inspect the mask prior to use and occasionally during use to ensure the screens have not come out or loose.
 - Communicate with subject throughout to ensure the speaker remains comfortable.
