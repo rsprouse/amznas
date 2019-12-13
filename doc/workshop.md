@@ -85,4 +85,4 @@
   - Cause: Pressure tube is connected to the wrong P1 port.
 - Symptom: The airflow channels are identical to the audio.
   - Cause: The recording is from the built-in audio device instead of the EGG-D800. Make sure the USB connection between the EGG-D800 and computer is secure at both ends.
-  - Cause: EGG-D800 not configured. Re-run the `eggrec` command with the `--aero` parameter
+  - Cause: EGG-D800 not configured. Re-run the `eggrec` command with the `--aero` parameter.
