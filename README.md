@@ -8,8 +8,8 @@ Files and scripts for Amazonian Nasality project
 1. Open an Anaconda Prompt from the Start Menu.
 1. Clone the repository: `git clone https://github.com/rsprouse/amznas`
 1. Prepare the `amznas` Anaconda environment:
-   a. For first time creation: `conda env create -f amznas\environment.yml`
-   a. Update an existing environment: `conda env update -f amznas\environment.yml --prune`
+    * For first time creation: `conda env create -f amznas\environment.yml`
+    * Update an existing environment: `conda env update -f amznas\environment.yml --prune`
 
 Also, `Recorder.exe` from laryngograph.com must be copied to the `C:\Users\lingguest\bin` directory.
 
