@@ -8,11 +8,14 @@ import subprocess
 import yaml
 from pathlib import Path
 from datetime import datetime as dt
+import scipy.io.wavfile
+import wave
+from eggdisp import egg_display
 import click
 
 from phonlab.utils import dir2df, get_timestamp_now
 
-datadir = os.path.join(os.environ['HOME'], 'Desktop', 'amznas')
+datadir = os.path.join(os.environ['USERPROFILE'], 'Desktop', 'amznas')
 
 class AmzCfg(object):
     '''A config for the Amazon Nasality project.'''
@@ -130,18 +133,22 @@ def next_token(sessdir, lang, spkr, researcher, yyyymmdd, item):
         re.IGNORECASE
     )
     df = dir2df(sessdir, fnpat=fnpat)
-    print(f'fnpat: {fnpat}')
-    print(f'df:\n{df}')
     if len(df) > 0:
         df['token'] = df['token'].astype(int)
         token = str(df['token'].max() + 1)
     return token
 
-def get_fpath(sessdir, lang, spkr, researcher, yyyymmdd, item):
+def get_fpath(sessdir, lang, spkr, researcher, yyyymmdd, item, token=None):
     '''Construct and return filepath for acquisition .wav file.'''
-    token = next_token(sessdir, lang, spkr, researcher, yyyymmdd, item)
+    if token == None or token < 0:
+        nexttok = next_token(sessdir, lang, spkr, researcher, yyyymmdd, item)
+        token = int(nexttok)-1 if token == None else int(nexttok)+token
     fname = f'{lang}_{spkr}_{researcher}_{yyyymmdd}_{item}_{token}'
-    return (os.path.join(sessdir, f'{fname}.wav'), os.path.join(sessdir, f'{fname}.ini'))
+    return (
+        token,
+        os.path.join(sessdir, f'{fname}.wav'),
+        os.path.join(sessdir, f'{fname}.ini')
+    )
 
 def get_ini(lx, spkr, item, token, utt):
     '''Return string rep of ini file.'''
@@ -164,10 +171,10 @@ UtteranceID = {item}_{token}
 Utterance = {utt}
 '''
 
-def run_acq(fpath, inifile):
+def run_acq(fpath, inifile, seconds):
     '''Run an acquisition.'''
     args = [
-        'recorder.exe',
+        os.path.normpath('C:/Users/lingguest/Downloads/Recorder1/Recorder.exe'),
         '-ini', inifile,
         '-of', fpath
     ]
@@ -175,11 +182,24 @@ def run_acq(fpath, inifile):
     if seconds is not None:
         args.extend(['-tm', seconds])
         msg = f'Acquiring for {seconds} seconds.'
-    print(args)
-    print(msg)
-    # TODO: remove dummy command
-    Path(fpath).touch()
-    #subprocess.run(args)
+    try:
+        subprocess.run(args)
+    except KeyboardInterrupt:
+        pass
+
+def wav_display(wav, chan, cutoff, lporder):
+    (rate, data) = scipy.io.wavfile.read(wav)
+    r = egg_display(
+        data,
+        rate,
+        chan=chan,
+        del_btn=None,
+        title=wav,
+        cutoff=cutoff,
+        order=lporder,
+        acqfile=wav
+    )
+    #print(f'egg_display returned "{r}"')
 
 @click.group()
 def cli():
@@ -194,35 +214,64 @@ def cli():
 @click.option('--seconds', required=False, default='', help='Acquisition duration (optional)')
 @click.option('--lx', is_flag=True, help='Turn on LX (EGG) channel')
 @click.option('--no-disp', is_flag=True, help='Skip display after acquisition')
-def acq(spkr, lang, researcher, item, utt, seconds, lx, no_disp):
+@click.option('--cutoff', required=False, default=50, help='Lowpass filter cutoff in Hz (optional; default 50)')
+@click.option('--lporder', required=False, default=3, help='Lowpass filter order (optional; default 3)')
+def acq(spkr, lang, researcher, item, utt, seconds, lx, no_disp, cutoff, lporder):
     today = dt.strftime(dt.today(), '%Y%m%d')
     sessdir = os.path.join(datadir, lang, spkr, today)
     Path(sessdir).mkdir(parents=True, exist_ok=True)
-    fpath, inifile = get_fpath(sessdir, lang, spkr, researcher, today, item)
-    ini = get_init(lx, spkr, item, token, utt)
+    token, fpath, inifile = get_fpath(
+        sessdir, lang, spkr, researcher, today, item, token=None
+    )
+    ini = get_ini(lx, spkr, item, token, utt)
     with open(inifile, 'w') as out:
         out.write(ini)
-    run_acq(fpath, inifile)
-    # TODO: display acq
-    print(f'Touched {fpath}')
-    print(f'inifile: {inifile}')
-    print(f'spkr: {spkr}')
-    print(f'lang: {lang}')
-    print(f'researcher: {researcher}')
-    print(f'item: {item}')
-    print(f'lx: {lx}')
-    print(f'no-disp: {no_disp}')
-    print(f'today: {today}')
+    run_acq(fpath, inifile, seconds)
+    chan = ['audio', 'orfl', None, 'nsfl']
+    if lx is True:
+        chan[2] = 'lx'
+    if no_disp is False:
+        wav_display(fpath, chan=chan, cutoff=cutoff, lporder=lporder)
+    #print(f'Touched {fpath}')
+    #print(f'inifile: {inifile}')
+    #print(f'spkr: {spkr}')
+    #print(f'lang: {lang}')
+    #print(f'researcher: {researcher}')
+    #print(f'item: {item}')
+    #print(f'lx: {lx}')
+    #print(f'no-disp: {no_disp}')
+    #print(f'today: {today}')
 
 @cli.command()
+@click.option('--wavfile', required=False, default=None, help="Input wav file")
 @click.option('--spkr', callback=validate_ident, help='Three-letter speaker identifier')
 @click.option('--lang', callback=validate_ident, help='Three-letter language identifier (ISO 639-3)')
 @click.option('--researcher', callback=validate_ident, help='Three-letter researcher (linguist) identifier')
-@click.option('--date', help="YYYYMMDD session date")
-#@click.option('--token', type=click.Int, help="Token identifier")
 @click.option('--item', help='Representation of the stimulus item')
-def disp(spkr, lang, researcher, item):
-    print('displaying last')
+@click.option('--date', required=False, default='today', help="YYYYMMDD session date")
+@click.option('--token', type=int, required=False, default=None, help="Token identifier")
+@click.option('--cutoff', required=False, default=50, help='Lowpass filter cutoff in Hz (optional; default 50)')
+@click.option('--lporder', required=False, default=3, help='Lowpass filter order (optional; default 3)')
+def disp(wavfile, spkr, lang, researcher, item, date, token, cutoff, lporder):
+    '''
+    Display an eggd800 wavfile recording. If given, --wav parameter
+    identifies the .wav file to display. Otherwise, the name is constructed
+    from the other parameters in a way that matches the acq() parameters.
+
+    The --token parameter can be used to specify the token identifier.
+    Use -1 to display the last token of a given --item.
+    '''
+    if wavfile is None:
+        if date == 'today':
+            date = dt.strftime(dt.today(), '%Y%m%d')
+        sessdir = os.path.join(datadir, lang, spkr, date)
+        token, wavfile, inifile = get_fpath(
+            sessdir, lang, spkr, researcher, date, item, token=token
+        )
+    chan = ['audio', 'orfl', None, 'nsfl']
+    if wave.open(wavfile).getnchannels() == 4:
+        chan[2] = 'lx'
+    wav_display(wavfile, chan=chan, cutoff=cutoff, lporder=lporder)
 
 if __name__ == '__main__':
     cli()
