@@ -120,30 +120,33 @@ def validate_ident(ctx, param, value):
         raise click.BadParameter(f'Identifier "{value}" must be exactly three characters')
     return value.lower()
 
-def next_token(sessdir, lang, spkr, researcher, yyyymmdd, item):
+def next_token(sessdir, lang, spkr, researcher, tstamp, item):
     '''Get the number of the next token for a .wav acquisition file, as a str.'''
+    date = tstamp.split('T')[0]
     token = '0'
-    # Note that Windows filesystems are case-insensitive. If the project's
+    # 1. Windows filesystems are case-insensitive. If the project's
     # transcription system distinguishes phone by case, e.g. s vs. S, then it
     # is not possible to distinguish items that differ only in case of one
     # or more characters. As a result we use re.IGNORECASE when matching
     # filenames, and the token count conflates these items.
+    #
+    # 2. Only the date portion of the timestamp is important
+    # for determining the token number, and the time portion is ignored.
     fnpat = re.compile(
-        f'^{lang}_{spkr}_{researcher}_{yyyymmdd}_{item}_(?P<token>\d+)\.wav$',
+        f'^{lang}_{spkr}_{researcher}_{date}[^_]*_{item}_(?P<token>\d+)\.wav$',
         re.IGNORECASE
     )
     df = dir2df(sessdir, fnpat=fnpat)
     if len(df) > 0:
-        df['token'] = df['token'].astype(int)
-        token = str(df['token'].max() + 1)
-    return token
+        token = df['token'].astype(int).max() + 1
+    return str(token)
 
-def get_fpath(sessdir, lang, spkr, researcher, yyyymmdd, item, token=None):
+def get_fpath(sessdir, lang, spkr, researcher, tstamp, item, token=None):
     '''Construct and return filepath for acquisition .wav file.'''
     if token == None or token < 0:
-        nexttok = next_token(sessdir, lang, spkr, researcher, yyyymmdd, item)
-        token = int(nexttok)-1 if token == None else int(nexttok)+token
-    fname = f'{lang}_{spkr}_{researcher}_{yyyymmdd}_{item}_{token}'
+        nexttok = next_token(sessdir, lang, spkr, researcher, tstamp, item)
+        token = int(nexttok) if token == None else int(nexttok)+token
+    fname = f'{lang}_{spkr}_{researcher}_{tstamp}_{item}_{token}'
     return (
         token,
         os.path.join(sessdir, f'{fname}.wav'),
@@ -174,7 +177,7 @@ Utterance = {utt}
 def run_acq(fpath, inifile, seconds):
     '''Run an acquisition.'''
     args = [
-        os.path.normpath('C:/Users/lingguest/Downloads/Recorder1/Recorder.exe'),
+        os.path.normpath('C:/bin/Recorder.exe'),
         '-ini', inifile,
         '-of', fpath
     ]
@@ -217,11 +220,16 @@ def cli():
 @click.option('--cutoff', required=False, default=50, help='Lowpass filter cutoff in Hz (optional; default 50)')
 @click.option('--lporder', required=False, default=3, help='Lowpass filter order (optional; default 3)')
 def acq(spkr, lang, researcher, item, utt, seconds, lx, no_disp, cutoff, lporder):
-    today = dt.strftime(dt.today(), '%Y%m%d')
-    sessdir = os.path.join(datadir, lang, spkr, today)
+    '''
+    Make a recording.
+    '''
+    today = dt.today()
+    todaystamp = dt.strftime(today, '%Y%m%d')
+    tstamp = dt.strftime(today, '%Y%m%dT%H%M%S')
+    sessdir = os.path.join(datadir, lang, spkr, todaystamp)
     Path(sessdir).mkdir(parents=True, exist_ok=True)
     token, fpath, inifile = get_fpath(
-        sessdir, lang, spkr, researcher, today, item, token=None
+        sessdir, lang, spkr, researcher, tstamp, item, token=None
     )
     ini = get_ini(lx, spkr, item, token, utt)
     with open(inifile, 'w') as out:
@@ -232,6 +240,12 @@ def acq(spkr, lang, researcher, item, utt, seconds, lx, no_disp, cutoff, lporder
         chan[2] = 'lx'
     if no_disp is False:
         wav_display(fpath, chan=chan, cutoff=cutoff, lporder=lporder)
+        # TODO: if item == 'zero':
+        # 1. read in nasal and oral flow channels, then take means and
+        # write to a file to be read by subsequent acqs
+        # else:
+        # 2. read zeros for session; subtract from nasal and oral flow channels
+        # before the displays
     #print(f'Touched {fpath}')
     #print(f'inifile: {inifile}')
     #print(f'spkr: {spkr}')
