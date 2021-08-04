@@ -18,8 +18,8 @@ Also, `Recorder.exe` from laryngograph.com must be copied to the `C:\bin` direct
 1. Open an Anaconda Prompt from the Start Menu.
 1. Activate the `amznas` environment: `conda activate amznas`
 1. Make an acquisition:
-    * Unlimited duration: `python amznas\amznas.py --researcher XXX --lang YYY --spkr ZZZ --item ITEM`
-    * Specified duration in seconds: `python amznas\amznas.py --researcher XXX --lang YYY --spkr ZZZ --seconds 5 --item ITEM`
+    * Unlimited duration: `python amznas\amznas.py acq --researcher XXX --lang YYY --spkr ZZZ --item ITEM`
+    * Specified duration in seconds: `python amznas\amznas.py acq --researcher XXX --lang YYY --spkr ZZZ --seconds 5 --item ITEM`
 
 ## Data
 
@@ -40,3 +40,7 @@ The Windows filesystem is not case-sensitive, so `ITEM` values that differ only 
 ## Troubleshooting
 
 If you get a `ModuleNotFoundError`, there is a good chance that you did not start an Anaconda Prompt or did not activate the `amznas` environment. Try repeating the steps in the 'Running the `amznas` acquisition utility' section.
+
+If you get `Error: No such option: <option>`:
+1. Check to see if the option name was mistyped.
+1. Check to see whether you included a valid subcommand name (usually `acq`) to the script, e.g. `python amznas\amznas.py acq ...`.
