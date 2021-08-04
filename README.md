@@ -36,3 +36,7 @@ Within the session folders, filenames are of the form `ISO_SPK_YOU_YYYYMMDDTHHHM
 * `TOKEN` is the instance of the `ITEM` in the session. Tokens are numbered automatically, starting at `0`.
 
 The Windows filesystem is not case-sensitive, so `ITEM` values that differ only in case are treated as identical when token numbers are calculated. Keep that in mind if your transcription system is case-sensitive.
+
+## Troubleshooting
+
+If you get a `ModuleNotFoundError`, there is a good chance that you did not start an Anaconda Prompt or did not activate the `amznas` environment. Try repeating the steps in the 'Running the `amznas` acquisition utility' section.
