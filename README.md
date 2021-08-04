@@ -19,7 +19,7 @@ Also, `Recorder.exe` from laryngograph.com must be copied to the `C:\bin` direct
 1. Activate the `amznas` environment: `conda activate amznas`
 1. Make an acquisition:
     * Unlimited duration: `python amznas\amznas.py --researcher XXX --lang YYY --spkr ZZZ --item ITEM`
-    * Specified duration: `python amznas\amznas.py --researcher XXX --lang YYY --spkr ZZZ --item ITEM`
+    * Specified duration in seconds: `python amznas\amznas.py --researcher XXX --lang YYY --spkr ZZZ --seconds 5 --item ITEM`
 
 ## Data
 
