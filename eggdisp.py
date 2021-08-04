@@ -64,9 +64,6 @@ class DelBtn(ToolBase):
 
 class Play(ToolBase):
     '''Play Button for toolbar.'''
-    image = os.path.normpath(
-        'C:/Users/lingguest/Desktop/amazon_nasality/installs/amznas/play.png'
-    )
 
     def __init__(self, *args, ax, audio, rate, **kwargs):
         super(Play, self).__init__(*args, **kwargs)
@@ -116,7 +113,7 @@ def egg_display(data, rate, chan, del_btn, title='', cutoff=50, order=3, acqfile
 
     fig = plt.figure(figsize=(16,5))
     fig.canvas.manager.set_window_title(title)
-    
+
     for plidx, (cname, cidx) in enumerate(chanmap.items()):
         spargs = {'sharex': fig.axes[0]} if len(fig.axes) > 0 else {}
         ax = fig.add_subplot(len(chanmap), 1, plidx+1, **spargs)
