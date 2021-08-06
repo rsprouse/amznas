@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import yaml
+import numpy as np
 from pathlib import Path
 from datetime import datetime as dt
 import scipy.io.wavfile
@@ -50,7 +51,7 @@ You have changed the configuration to:
 lang: {val if fld == 'lang' else self.lang}
 researcher: {val if fld == 'researcher' else self.researcher}
 
-Save this configuration for next time? (y/n) 
+Save this configuration for next time? (y/n)
 '''
         r = input(msg).strip().lower()
         if r == 'y':
@@ -190,8 +191,73 @@ def run_acq(fpath, inifile, seconds):
     except KeyboardInterrupt:
         pass
 
-def wav_display(wav, chan, cutoff, lporder):
+def stash_chanmeans(wav, chan, token, sessdir, lang, spkr, researcher, today):
+    '''
+    Store channel means in a yaml file in the session directory.
+    '''
+    yamlfile = os.path.join(
+        sessdir,
+        f'{lang}_{spkr}_{today}_session.yaml'
+    )
+    try:
+        with open(yamlfile, 'r') as fh:
+            sessmd = yaml.safe_load(fh)
+    except FileNotFoundError:
+        sessmd = {
+            'session': {
+                'spkr': spkr,
+                'lang': lang,
+            },
+            'acq': []
+        }
     (rate, data) = scipy.io.wavfile.read(wav)
+    cmeans = data.mean(axis=0)
+    chanmeans = []
+    for cidx, c in enumerate(chan):
+        label = 'no_label' if c is None or c == '' else c
+        chanmeans.append({
+                'idx': cidx,
+                'type': label,
+                # If we don't cast to float yaml.dump exports the value
+                # as a numpy object instead of a simple float.
+                'mean': float(cmeans[cidx]),
+                'status': 'automean'
+            })
+    sessmd['acq'].append({
+        'item': '_zero_',
+        'token': token,
+        'researcher': researcher,
+        'fname': os.path.basename(wav),
+        'channels': chanmeans
+    })
+    with open(yamlfile, 'w') as fh:
+        yaml.dump(sessmd, fh, sort_keys=False)
+
+def load_sess_yaml(sessdir, lang, spkr, today):
+    '''
+    Load session metadata from yaml file.
+    '''
+    yamlfile = os.path.join(
+        sessdir,
+        f'{lang}_{spkr}_{today}_session.yaml'
+    )
+    try:
+        with open(yamlfile, 'r') as fh:
+            sessmd = yaml.safe_load(fh)
+    except FileNotFoundError:
+        sessmd = {
+            'session': {
+                'spkr': spkr,
+                'lang': lang,
+            },
+            'acq': []
+        }
+    return sessmd
+
+def wav_display(wav, chan, cutoff, lporder, chanmeans):
+    (rate, data) = scipy.io.wavfile.read(wav)
+    if len(chanmeans) == data.shape[1]:
+        data -= np.array(chanmeans).astype(data.dtype)
     r = egg_display(
         data,
         rate,
@@ -215,11 +281,12 @@ def cli():
 @click.option('--item', help='Representation of the stimulus item')
 @click.option('--utt', required=False, default='', help='Utterance metadata (optional)')
 @click.option('--seconds', required=False, default='', help='Acquisition duration (optional)')
+@click.option('--autozero', required=False, default='0', type=int, help='Remove mean from display using _zero_ token # (optional)')
 @click.option('--lx', is_flag=True, help='Turn on LX (EGG) channel')
 @click.option('--no-disp', is_flag=True, help='Skip display after acquisition')
 @click.option('--cutoff', required=False, default=50, help='Lowpass filter cutoff in Hz (optional; default 50)')
 @click.option('--lporder', required=False, default=3, help='Lowpass filter order (optional; default 3)')
-def acq(spkr, lang, researcher, item, utt, seconds, lx, no_disp, cutoff, lporder):
+def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutoff, lporder):
     '''
     Make a recording.
     '''
@@ -238,23 +305,41 @@ def acq(spkr, lang, researcher, item, utt, seconds, lx, no_disp, cutoff, lporder
     chan = ['audio', 'orfl', None, 'nsfl']
     if lx is True:
         chan[2] = 'lx'
+    if item == '_zero_':
+        stash_chanmeans(
+            fpath,
+            chan=chan,
+            token=token,
+            sessdir=sessdir,
+            lang=lang,
+            spkr=spkr,
+            researcher=researcher,
+            today=todaystamp
+        )
     if no_disp is False:
-        wav_display(fpath, chan=chan, cutoff=cutoff, lporder=lporder)
-        # TODO: if item == 'zero':
-        # 1. read in nasal and oral flow channels, then take means and
-        # write to a file to be read by subsequent acqs
-        # else:
-        # 2. read zeros for session; subtract from nasal and oral flow channels
-        # before the displays
-    #print(f'Touched {fpath}')
-    #print(f'inifile: {inifile}')
-    #print(f'spkr: {spkr}')
-    #print(f'lang: {lang}')
-    #print(f'researcher: {researcher}')
-    #print(f'item: {item}')
-    #print(f'lx: {lx}')
-    #print(f'no-disp: {no_disp}')
-    #print(f'today: {today}')
+        if autozero >= 0 and item != '_zero_':
+            sessmd = load_sess_yaml(
+                sessdir, lang=lang, spkr=spkr, today=todaystamp
+            )
+            chanmeans = []
+            for a in sessmd['acq']:
+                if a['item'] == '_zero_' and a['token'] == autozero:
+                    chanmeans = np.zeros(len(a['channels']))
+                    for c in a['channels']:
+                        if c['type'] in ('orfl', 'nsfl'):
+                            chanmeans[c['idx']] = c['mean']
+                    break
+            if len(chanmeans) == 0:
+                print(f"Didn't find _zero_ token {autozero} for the current session!")
+        else:
+            chanmeans = [] # No adjustment
+        wav_display(
+            fpath,
+            chan=chan,
+            cutoff=cutoff,
+            lporder=lporder,
+            chanmeans=chanmeans
+        )
 
 @cli.command()
 @click.option('--wavfile', required=False, default=None, help="Input wav file")
