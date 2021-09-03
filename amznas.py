@@ -2,8 +2,12 @@
 
 # Command line utility for Amazonian Nasality project
 
+# TODO: check --lx param
+# TODO: try to prevent lx recording when not requested
+
 import os
 import re
+import glob
 import subprocess
 import yaml
 import numpy as np
@@ -153,6 +157,11 @@ def get_fpath(sessdir, lang, spkr, researcher, tstamp, item, token=None):
         os.path.join(sessdir, f'{fname}.wav'),
         os.path.join(sessdir, f'{fname}.ini')
     )
+
+def find_wav(sessdir, lang, spkr, researcher, date, item, token):
+    '''Find existing acquisition .wav file.'''
+    fre = f'{lang}_{spkr}_{researcher}_{date}T??????_{item}_{token}.wav'
+    return glob.glob(os.path.join(sessdir, fre))
 
 def get_ini(lx, spkr, item, token, utt):
     '''Return string rep of ini file.'''
@@ -342,35 +351,78 @@ def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutof
         )
 
 @cli.command()
-@click.option('--wavfile', required=False, default=None, help="Input wav file")
+@click.option('--wavfile', required=False, default=None, help="Input .wav file")
 @click.option('--spkr', callback=validate_ident, help='Three-letter speaker identifier')
 @click.option('--lang', callback=validate_ident, help='Three-letter language identifier (ISO 639-3)')
 @click.option('--researcher', callback=validate_ident, help='Three-letter researcher (linguist) identifier')
 @click.option('--item', help='Representation of the stimulus item')
 @click.option('--date', required=False, default='today', help="YYYYMMDD session date")
-@click.option('--token', type=int, required=False, default=None, help="Token identifier")
+@click.option('--token', type=int, required=False, default=-1, help="Token identifier (optional; defaults to last token)")
+@click.option('--autozero', required=False, default='0', type=int, help='Remove mean from display using _zero_ token (optional)')
 @click.option('--cutoff', required=False, default=50, help='Lowpass filter cutoff in Hz (optional; default 50)')
 @click.option('--lporder', required=False, default=3, help='Lowpass filter order (optional; default 3)')
-def disp(wavfile, spkr, lang, researcher, item, date, token, cutoff, lporder):
+def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, cutoff,
+    lporder):
     '''
-    Display an eggd800 wavfile recording. If given, --wav parameter
+    Display an eggd800 wavfile recording. If given, the --wavfile parameter
     identifies the .wav file to display. Otherwise, the name is constructed
     from the other parameters in a way that matches the acq() parameters.
 
-    The --token parameter can be used to specify the token identifier.
-    Use -1 to display the last token of a given --item.
+    The --token parameter is used to specify the token identifier.
+    Use negative values to count tokens in reverse: -1 for last token,
+    -2 for second-to-last, and so on.
+
+    The --autozero parameter is used to specify which _zero_ token from the
+    acquisition session to use for calculating the channel means. Use the
+    value -1 to indicate that the display should not be adjusted by the
+    channel means.
     '''
     if wavfile is None:
         if date == 'today':
             date = dt.strftime(dt.today(), '%Y%m%d')
         sessdir = os.path.join(datadir, lang, spkr, date)
-        token, wavfile, inifile = get_fpath(
-            sessdir, lang, spkr, researcher, date, item, token=token
-        )
+        tokgl = '*' if token < 1 else token
+        wavfiles = find_wav(sessdir, lang, spkr, researcher, date, item, tokgl)
+        if len(wavfiles) == 0:
+            print('Could not find a matching .wav file.')
+            exit(0)
+        elif len(wavfiles) > 1 and tokgl == '*':
+            try:
+                wavfile = wavfiles[token]
+            except IndexError:
+                print(f'Could not find matching file with token index {token}.')
+                exit(0)
+        elif len(wavfiles) > 1:
+            print('Multiple matching files found. Use the --wavfile param and '
+                  'specify one of:\n')
+            print('\n'.join(wavfiles))
+            exit(0)
+        else:
+            wavfile = wavfiles[0]
     chan = ['audio', 'orfl', None, 'nsfl']
     if wave.open(wavfile).getnchannels() == 4:
         chan[2] = 'lx'
-    wav_display(wavfile, chan=chan, cutoff=cutoff, lporder=lporder)
+    if autozero >= 0:
+        sessmd = load_sess_yaml(sessdir, lang=lang, spkr=spkr, today=date)
+        chanmeans = []
+        for a in sessmd['acq']:
+            if a['item'] == '_zero_' and a['token'] == autozero:
+                chanmeans = np.zeros(len(a['channels']))
+                for c in a['channels']:
+                    if c['type'] in ('orfl', 'nsfl'):
+                        chanmeans[c['idx']] = c['mean']
+                break
+        if len(chanmeans) == 0:
+            print(f"Didn't find _zero_ token {autozero} for the session!")
+    else:
+        chanmeans = [] # No adjustment
+    wav_display(
+        wavfile,
+        chan=chan,
+        cutoff=cutoff,
+        lporder=lporder,
+        chanmeans=chanmeans
+    )
 
 if __name__ == '__main__':
     cli()
