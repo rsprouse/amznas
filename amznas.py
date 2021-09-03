@@ -5,20 +5,27 @@
 # TODO: check --lx param
 # TODO: try to prevent lx recording when not requested
 
-import os
-import re
-import glob
-import subprocess
-import yaml
-import numpy as np
-from pathlib import Path
-from datetime import datetime as dt
-import scipy.io.wavfile
-import wave
-from eggdisp import egg_display
-import click
-
-from phonlab.utils import dir2df, get_timestamp_now
+try:
+    import os
+    import re
+    import glob
+    import subprocess
+    import yaml
+    import numpy as np
+    from pathlib import Path
+    from datetime import datetime as dt
+    import scipy.io.wavfile
+    import wave
+    from eggdisp import egg_display
+    import click
+    from phonlab.utils import dir2df, get_timestamp_now
+except:
+    print()
+    print('Could not import required modules.')
+    print('Try to load them with:')
+    print('    conda activate amznas')
+    print()
+    exit(0)
 
 datadir = os.path.join(os.environ['USERPROFILE'], 'Desktop', 'amznas')
 
