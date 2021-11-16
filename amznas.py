@@ -170,12 +170,13 @@ def find_wav(sessdir, lang, spkr, researcher, date, item, token):
     fre = f'{lang}_{spkr}_{researcher}_{date}T??????_{item}_{token}.wav'
     return glob.glob(os.path.join(sessdir, fre))
 
-def get_ini(lx, spkr, item, token, utt):
+def get_ini(lx, spkr, item, token, utt, dev_version):
     '''Return string rep of ini file.'''
+    chansel = '00001111' if dev_version == '1' else '00111001'
     lxstr = '011' if lx is True else '0'
     return f'''
 [Device]
-ChannelSelection = 00111001
+ChannelSelection = {chansel}
 Lx = {lxstr}
 SampleRate = 120000
 MICGAIN = 4
@@ -302,7 +303,8 @@ def cli():
 @click.option('--no-disp', is_flag=True, help='Skip display after acquisition')
 @click.option('--cutoff', required=False, default=50, help='Lowpass filter cutoff in Hz (optional; default 50)')
 @click.option('--lporder', required=False, default=3, help='Lowpass filter order (optional; default 3)')
-def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutoff, lporder):
+@click.option('--dev-version', required=False, default='2', help='EGG-D800 device version (optional; default 2)')
+def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutoff, lporder, dev_version):
     '''
     Make a recording.
     '''
@@ -314,7 +316,7 @@ def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutof
     token, fpath, inifile = get_fpath(
         sessdir, lang, spkr, researcher, tstamp, item, token=None
     )
-    ini = get_ini(lx, spkr, item, token, utt)
+    ini = get_ini(lx, spkr, item, token, utt, dev_version)
     with open(inifile, 'w') as out:
         out.write(ini)
     run_acq(fpath, inifile, seconds)
