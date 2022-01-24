@@ -172,12 +172,17 @@ def find_wav(sessdir, lang, spkr, researcher, date, item, token):
 
 def get_ini(lx, spkr, item, token, utt, dev_version):
     '''Return string rep of ini file.'''
-    chansel = '00001111' if dev_version == '1' else '00111001'
+    if dev_version == '1':
+        chansel = '00001111'
+        p2ctrl = '\nP2 = 1\n'
+    else:
+        chansel = '00111001'
+        p2ctrl = ''
     lxstr = '011' if lx is True else '0'
     return f'''
 [Device]
 ChannelSelection = {chansel}
-Lx = {lxstr}
+{p2ctrl}Lx = {lxstr}
 SampleRate = 120000
 MICGAIN = 4
 LXGAIN = 2
@@ -320,7 +325,10 @@ def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutof
     with open(inifile, 'w') as out:
         out.write(ini)
     run_acq(fpath, inifile, seconds)
-    chan = ['audio', 'orfl', None, 'nsfl']
+    if dev_version == '1':
+        chan = ['audio', None, 'orfl', 'nsfl']
+    else:
+        chan = ['audio', 'orfl', None, 'nsfl']
     if lx is True:
         chan[2] = 'lx'
     if item == '_zero_':
@@ -370,8 +378,9 @@ def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutof
 @click.option('--autozero', required=False, default='0', type=int, help='Remove mean from display using _zero_ token (optional)')
 @click.option('--cutoff', required=False, default=50, help='Lowpass filter cutoff in Hz (optional; default 50)')
 @click.option('--lporder', required=False, default=3, help='Lowpass filter order (optional; default 3)')
+@click.option('--dev-version', required=False, default='2', help='EGG-D800 device version (optional; default 2)')
 def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, cutoff,
-    lporder):
+    lporder, dev_version):
     '''
     Display an eggd800 wavfile recording. If given, the --wavfile parameter
     identifies the .wav file to display. Otherwise, the name is constructed
@@ -408,7 +417,10 @@ def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, cutoff,
             exit(0)
         else:
             wavfile = wavfiles[0]
-    chan = ['audio', 'orfl', None, 'nsfl']
+    if dev_version == '1':
+        chan = ['audio', 'orfl', None, 'nsfl']
+    else:
+        chan = ['audio', None, 'orfl', 'nsfl']
     if wave.open(wavfile).getnchannels() == 4:
         chan[2] = 'lx'
     if autozero >= 0:
