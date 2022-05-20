@@ -176,16 +176,16 @@ def get_ini(lx, spkr, item, token, utt, dev_version):
         chansel = '00001111'
         p2ctrl = '\nP2 = 1\n'
     else:
-        chansel = '00111001'
+        chansel = '00101011' if lx is True else '00111001'
         p2ctrl = ''
-    lxstr = '011' if lx is True else '0'
+    lxstr = '1' if lx is True else '0'
     return f'''
 [Device]
 ChannelSelection = {chansel}
 {p2ctrl}Lx = {lxstr}
 SampleRate = 120000
 MICGAIN = 4
-LXGAIN = 2
+LXGAIN = 4
 NXGAIN = 4
 NXPREAMP = 0
 
@@ -325,12 +325,14 @@ def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutof
     with open(inifile, 'w') as out:
         out.write(ini)
     run_acq(fpath, inifile, seconds)
-    if dev_version == '1':
+
+    if lx is True:
+        chan = ['audio', 'lx', 'orfl', 'nsfl']
+    elif dev_version == '1':
         chan = ['audio', None, 'orfl', 'nsfl']
     else:
         chan = ['audio', 'orfl', None, 'nsfl']
-    if lx is True:
-        chan[2] = 'lx'
+
     if item == '_zero_':
         stash_chanmeans(
             fpath,
@@ -417,12 +419,12 @@ def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, cutoff,
             exit(0)
         else:
             wavfile = wavfiles[0]
-    if dev_version == '1':
-        chan = ['audio', 'orfl', None, 'nsfl']
-    else:
-        chan = ['audio', None, 'orfl', 'nsfl']
     if wave.open(wavfile).getnchannels() == 4:
-        chan[2] = 'lx'
+        chan = ['audio', 'lx', 'orfl', 'nsfl']
+    elif dev_version == '1':
+        chan = ['audio', None, 'orfl', 'nsfl']
+    else:
+        chan = ['audio', 'orfl', None, 'nsfl']
     if autozero >= 0:
         sessmd = load_sess_yaml(sessdir, lang=lang, spkr=spkr, today=date)
         chanmeans = []
