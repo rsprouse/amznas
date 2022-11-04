@@ -27,7 +27,10 @@ except:
     print()
     exit(0)
 
-datadir = os.path.join(os.environ['USERPROFILE'], 'Desktop', 'amznas')
+try:
+    datadir = os.path.join(os.environ['USERPROFILE'], 'Desktop', 'amznas')
+except KeyError:
+    datadir = os.path.join(os.environ['HOME'], 'Desktop', 'amznas')
 
 class AmzCfg(object):
     '''A config for the Amazon Nasality project.'''
