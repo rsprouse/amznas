@@ -12,6 +12,7 @@ try:
     import subprocess
     import yaml
     import numpy as np
+    import pandas as pd
     from pathlib import Path
     from datetime import datetime as dt
     import scipy.io.wavfile
@@ -27,7 +28,14 @@ except:
     print()
     exit(0)
 
-datadir = os.path.join(os.environ['USERPROFILE'], 'Desktop', 'amznas')
+try:
+    datadir = os.path.join(os.environ['USERPROFILE'], 'Desktop', 'amznas')
+except KeyError:
+    datadir = os.path.join(os.environ['HOME'], 'Desktop', 'amznas')
+
+wavpat = re.compile(
+    '(?P<lang>[^_]+)_(?P<spkr>[^_]+)_(?P<researcher>[^_]+)_(?P<tstamp>[^_]+)_(?P<item>.+)_(?P<rep>\d+)\.wav$'
+)
 
 class AmzCfg(object):
     '''A config for the Amazon Nasality project.'''
@@ -446,6 +454,65 @@ def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, cutoff,
         lporder=lporder,
         chanmeans=chanmeans
     )
+
+def check_chans(row, datadir, rolldir, dev_version):
+    '''
+    Diagnose .wav file for incorrect channel order. Use `np.roll` to rotate
+    the channels and save to `rolldir` where necessary.
+
+    **NOTE** The current implementation is very simple and assumes that there
+    are four channels, of which one is an empty EGG signal and which is
+    expected to have lowest intensity.
+    '''
+    rate, d = scipy.io.wavfile.read(datadir / row.relpath / row.fname)
+    # If recording is not a four-channel recording we don't know what to do with it.
+    assert(d.shape[1] == 4)
+    centered = d - d.mean(axis=0)
+
+    # Calculation of zero crossings.
+#    zc_rate = np.count_nonzero(
+#        np.diff(centered > 0, axis=0),
+#        axis=0
+#    ) / (d.shape[0] / rate)
+#    zcmax = np.argmax(
+#        np.count_nonzero(
+#            np.diff(centered > 0, axis=0),
+#            axis=0
+#        )
+#    )
+
+    # EGG channel normally not active and should have smallest amplitude overall.
+    rms = np.sqrt(np.mean(centered ** 2, axis=0))
+    # Channel order =
+    # 'v1': ['audio', 'egg', 'orfl', 'nsfl'],
+    # 'v2': ['audio', 'orfl', 'egg', 'nsfl']
+    expectedidx = 1 if dev_version == '1' else 2
+    if rms.argmin() != expectedidx:
+        rollname = rolldir / row.relpath / row.fname
+        rollname.parent.mkdir(parents=True, exist_ok=True)
+        scipy.io.wavfile.write(
+            rollname, rate, np.roll(d, expectedidx - rms.argmin(), axis=1)
+        )
+        print(f'Rolled channels in {rollname}.')
+
+@cli.command()
+@click.option('--dev-version', required=False, default='2', help='EGG-D800 device version (optional; default 2)')
+def rollwav(dev_version):
+    '''
+    Check all amznas .wav files for correct channel order. Make a corrected
+    copy in 'rollwav' folder if channel order is incorrect.
+    '''
+    wavdir = Path(datadir)
+    wavdf = dir2df(wavdir, fnpat=wavpat)
+    rolldir = wavdir.parent / 'rollwav'
+    if not rolldir.exists():
+        rolldir.mkdir(parents=True, exist_ok=True)
+    rolldf = dir2df(rolldir, fnpat=wavpat).loc[:, ['relpath', 'fname']]
+    rolldf['rollexists'] = True
+    todo = pd.merge(wavdf, rolldf, how='left', on=['relpath', 'fname'])
+    todo = todo[(todo['item'] != '_zero_') & (todo['rollexists'].isna())]
+    for row in todo.itertuples():
+        check_chans(row, wavdir, rolldir, dev_version=dev_version)
 
 if __name__ == '__main__':
     cli()
