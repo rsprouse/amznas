@@ -28,6 +28,7 @@ except:
     print()
     exit(0)
 
+
 try:
     datadir = os.path.join(os.environ['USERPROFILE'], 'Desktop', 'amznas')
 except KeyError:
