@@ -379,9 +379,9 @@ def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutof
 
 @cli.command()
 @click.option('--wavfile', required=False, default=None, help="Input .wav file")
-@click.option('--spkr', callback=validate_ident, help='Three-letter speaker identifier')
-@click.option('--lang', callback=validate_ident, help='Three-letter language identifier (ISO 639-3)')
-@click.option('--researcher', callback=validate_ident, help='Three-letter researcher (linguist) identifier')
+@click.option('--spkr', help='Three-letter speaker identifier')
+@click.option('--lang', help='Three-letter language identifier (ISO 639-3)')
+@click.option('--researcher', help='Three-letter researcher (linguist) identifier')
 @click.option('--item', help='Representation of the stimulus item')
 @click.option('--date', required=False, default='today', help="YYYYMMDD session date")
 @click.option('--token', type=int, required=False, default=-1, help="Token identifier (optional; defaults to last token)")
@@ -405,7 +405,9 @@ def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, cutoff,
     value -1 to indicate that the display should not be adjusted by the
     channel means.
     '''
-    if wavfile is None:
+    if wavfile is not None:
+        sessdir = Path(wavfile).parent
+    else:
         if date == 'today':
             date = dt.strftime(dt.today(), '%Y%m%d')
         sessdir = os.path.join(datadir, lang, spkr, date)
