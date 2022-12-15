@@ -334,8 +334,10 @@ def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutof
         out.write(ini)
     run_acq(fpath, inifile, seconds)
 
-    if lx is True:
+    if lx is True and dev_version == '1':
         chan = ['audio', 'lx', 'orfl', 'nsfl']
+    elif lx is True:
+        chan = ['audio', 'orfl', 'lx', 'nsfl']
     elif dev_version == '1':
         chan = ['audio', None, 'orfl', 'nsfl']
     else:
@@ -386,11 +388,12 @@ def acq(spkr, lang, researcher, item, utt, seconds, autozero, lx, no_disp, cutof
 @click.option('--date', required=False, default='today', help="YYYYMMDD session date")
 @click.option('--token', type=int, required=False, default=-1, help="Token identifier (optional; defaults to last token)")
 @click.option('--autozero', required=False, default='0', type=int, help='Remove mean from display using _zero_ token (optional)')
+@click.option('--lx', is_flag=True, help='Turn on LX (EGG) channel')
 @click.option('--cutoff', required=False, default=50, help='Lowpass filter cutoff in Hz (optional; default 50)')
 @click.option('--lporder', required=False, default=3, help='Lowpass filter order (optional; default 3)')
 @click.option('--dev-version', required=False, default='2', help='EGG-D800 device version (optional; default 2)')
-def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, cutoff,
-    lporder, dev_version):
+def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, lx,
+    cutoff, lporder, dev_version):
     '''
     Display an eggd800 wavfile recording. If given, the --wavfile parameter
     identifies the .wav file to display. Otherwise, the name is constructed
@@ -429,8 +432,10 @@ def disp(wavfile, spkr, lang, researcher, item, date, token, autozero, cutoff,
             exit(0)
         else:
             wavfile = wavfiles[0]
-    if wave.open(wavfile).getnchannels() == 4:
+    if lx is True and dev_version == '1':
         chan = ['audio', 'lx', 'orfl', 'nsfl']
+    elif lx is True:
+        chan = ['audio', 'orfl', 'lx', 'nsfl']
     elif dev_version == '1':
         chan = ['audio', None, 'orfl', 'nsfl']
     else:
