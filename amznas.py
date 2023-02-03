@@ -130,10 +130,7 @@ Save this configuration for next time? (y/n)
 
 def validate_ident(ctx, param, value):
     if value is None and param.name in ('researcher', 'lang'):
-        try:
-            value = cfg[param.name]
-        except KeyError:
-            raise click.BadParameter(f'must be included as a command parameter or in the config file {cfgfile}.')
+        raise click.BadParameter(f'`--{param.name} XXX` must be included as a command parameter.')
     try:
         assert(re.match('^[a-zA-Z]{3}$', value))
     except AssertionError:
